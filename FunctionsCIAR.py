@@ -96,18 +96,18 @@ def CIAR_phi_kalman(x,y,t,yerr,zero_mean=True,standarized=True,c=0.5):
         out=1e10
     return out
 
-def CIAR_kalman(y,sT,delta=0,zero_mean=True,standarized=True,c=0.5,niter=10,seed=1234):
-    random.seed(seed) 
+def CIAR_kalman(y,sT,yerr=0,zero_mean=True,standarized=True,c=0.5,niter=10,seed=1234):
+    random.seed(seed)
     aux=1e10
     value=1e10
     br=0
-    if np.sum(delta)==0:
-        delta=np.zeros(len(y))
+    if np.sum(yerr)==0:
+        yerr=np.zeros(len(y))
     for i in range(niter):
         phi_R=2*np.random.uniform(0,1,1)-1
         phi_I=2*np.random.uniform(0,1,1)-1
         bnds = ((-0.9999, 0.9999), (-0.9999, 0.9999))
-        out=minimize(CIAR_phi_kalman,np.array([phi_R, phi_I]),args=(y,sT,delta,zero_mean,standarized,c),bounds=bnds,method='L-BFGS-B')
+        out=minimize(CIAR_phi_kalman,np.array([phi_R, phi_I]),args=(y,sT,yerr,zero_mean,standarized,c),bounds=bnds,method='L-BFGS-B')
         value=out.fun
         if aux > value:
             par=out.x
@@ -117,18 +117,18 @@ def CIAR_kalman(y,sT,delta=0,zero_mean=True,standarized=True,c=0.5,niter=10,seed
             break
         #print br                                                                                                                                                                                          
     if aux == 1e10:
-       par=np.zeros(2)
+        par=np.zeros(2)
     return par[0],par[1],aux
 
-
-
-def predict_CIAR(x,y,t,standarized=True,c=1):
+def predict_CIAR(x,y,t,yerr=0,standarized=True,c=1):
     n=len(y)
     Sighat=np.zeros(shape=(2,2))
     Sighat[0,0]=1
     Sighat[1,1]=c
     if standarized == False:
          Sighat=np.var(y)*Sighat
+    if np.sum(yerr)==0:
+        yerr=np.zeros(len(y))
     xhat=np.zeros(shape=(2,n))
     delta=np.diff(t)
     Q=Sighat
@@ -144,7 +144,7 @@ def predict_CIAR(x,y,t,standarized=True,c=1):
         phi=1.1
     if abs(phi) < 1:
         for i in range(n-1):
-            Lambda=np.dot(np.dot(G,Sighat),G.transpose())
+            Lambda=np.dot(np.dot(G,Sighat),G.transpose())+yerr[i+1]**2
             if (Lambda <= 0) or (np.isnan(Lambda) == True):
                 break
             phi2_R=(Phi**delta[i])*np.cos(delta[i]*psi)
